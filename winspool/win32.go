@@ -598,6 +598,8 @@ func EnumPrinters2() ([]PrinterInfo2, error) {
 
 type HANDLE uintptr
 
+
+ 
 func OpenPrinter(printerName string) (HANDLE, error) {
 	var pPrinterName *uint16
 	pPrinterName, err := syscall.UTF16PtrFromString(printerName)
@@ -607,6 +609,7 @@ func OpenPrinter(printerName string) (HANDLE, error) {
 
 	var hPrinter HANDLE
 	_, _, err = openPrinterProc.Call(uintptr(unsafe.Pointer(pPrinterName)), uintptr(unsafe.Pointer(&hPrinter)), 0)
+    fmt.Println(err)
 	if err != NO_ERROR {
 		return 0, err
 	}
@@ -737,6 +740,7 @@ func (ji1 *JobInfo1) GetPagesPrinted() uint32 {
 func (hPrinter HANDLE) GetJob(jobID int32) (*JobInfo1, error) {
 	var cbBuf uint32
 	_, _, err := getJobProc.Call(uintptr(hPrinter), uintptr(jobID), 1, 0, 0, uintptr(unsafe.Pointer(&cbBuf)))
+    fmt.Println("inside getjo", err)
 	if err != ERROR_INSUFFICIENT_BUFFER {
 		return nil, err
 	}

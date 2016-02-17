@@ -231,7 +231,7 @@ func (pm *PrinterManager) applyDiff(diff *lib.PrinterDiff, ch chan<- lib.Printer
 			log.InfoPrinterf(diff.Printer.Name+" "+diff.Printer.GCPID, "Registered in the cloud")
 
 			if pm.gcp.CanShare() {
-				if err := pm.gcp.Share(diff.Printer.GCPID, pm.shareScope, gcp.User, true, false); err != nil {
+				if err := pm.gcp.Share(diff.Printer.GCPID, pm.shareScope, gcp.User, true); err != nil {
 					log.ErrorPrinterf(diff.Printer.Name, "Failed to share: %s", err)
 				} else {
 					log.InfoPrinterf(diff.Printer.Name, "Shared")
@@ -360,7 +360,9 @@ func (pm *PrinterManager) deleteInFlightJob(jobID string) {
 
 	delete(pm.jobsInFlight, jobID)
 }
-
+ func delaySecond(n time.Duration) {
+         time.Sleep(n * time.Second)
+ }
 // printJob prints a new job to a native printer, then polls the native job state
 // and updates the GCP/Privet job state. then returns when the job state is DONE
 // or ABORTED.

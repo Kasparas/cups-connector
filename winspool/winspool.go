@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+    "time"
 
 	"github.com/google/cups-connector/cdd"
 	"github.com/google/cups-connector/lib"
@@ -466,6 +467,7 @@ func (ws *WinSpool) addSystemTagsToPrinters(printers []lib.Printer) []lib.Printe
 	for i := range printers {
 		for k, v := range ws.systemTags {
 			printers[i].Tags[k] = v
+           fmt.Println(v)
 		}
 	}
 	return printers
@@ -569,19 +571,29 @@ func convertJobState(wsStatus uint32) *cdd.JobState {
 	return &state
 }
 
+ func delaySecond(n time.Duration) {
+         time.Sleep(n * time.Second)
+ }
+ 
 // GetJobState gets the current state of the job indicated by jobID.
 func (ws *WinSpool) GetJobState(printerName string, jobID uint32) (*cdd.PrintJobStateDiff, error) {
-	hPrinter, err := OpenPrinter(printerName)
+
+	hPrinter, err := OpenPrinter(printerName)   
+    fmt.Println(OpenPrinter(printerName))
 	if err != nil {
 		return nil, err
 	}
 
 	ji1, err := hPrinter.GetJob(int32(jobID))
+    fmt.Println(hPrinter.GetJob(int32(jobID)))
+    
 	if err != nil {
+        fmt.Println(err)
 		if err == ERROR_INVALID_PARAMETER {
-			jobState := cdd.PrintJobStateDiff{
+            fmt.Println("It is going down!")
+			jobState := cdd.PrintJobStateDiff{   
 				State: &cdd.JobState{
-					Type:              cdd.JobStateAborted,
+					Type:              cdd.JobStateAborted,                                                            // Fails here 
 					DeviceActionCause: &cdd.DeviceActionCause{cdd.DeviceActionCauseOther},
 				},
 			}
@@ -888,7 +900,7 @@ func (ws *WinSpool) Print(printer *lib.Printer, fileName, title, user, gcpJobID 
 			return 0, err
 		}
 	}
-
+    delaySecond(5)
 	return uint32(jobID), nil
 }
 

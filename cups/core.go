@@ -1,10 +1,10 @@
-// Copyright 2015 Google Inc. All rights reserved.
+/*
+Copyright 2015 Google Inc. All rights reserved.
 
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file or at
-// https://developers.google.com/open-source/licenses/bsd
-
-// +build linux darwin
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file or at
+https://developers.google.com/open-source/licenses/bsd
+*/
 
 package cups
 
@@ -120,6 +120,7 @@ func (cc *cupsCore) printFile(user, printername, filename, title *C.char, numOpt
 func (cc *cupsCore) getPrinters(attributes **C.char, attrSize C.int) (*C.ipp_t, error) {
 	// ippNewRequest() returns ipp_t pointer which does not need explicit free.
 	request := C.ippNewRequest(C.IPP_OP_CUPS_GET_PRINTERS)
+    fmt.println(request)
 	C.ippAddStrings(request, C.IPP_TAG_OPERATION, C.IPP_TAG_KEYWORD, C.REQUESTED_ATTRIBUTES,
 		attrSize, nil, attributes)
 

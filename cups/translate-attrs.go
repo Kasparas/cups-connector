@@ -1,10 +1,10 @@
-// Copyright 2015 Google Inc. All rights reserved.
+/*
+Copyright 2015 Google Inc. All rights reserved.
 
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file or at
-// https://developers.google.com/open-source/licenses/bsd
-
-// +build linux darwin
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file or at
+https://developers.google.com/open-source/licenses/bsd
+*/
 
 package cups
 
@@ -27,6 +27,7 @@ func translateAttrs(printerTags map[string][]string) (*cdd.PrinterDescriptionSec
 	}
 	if i, ok := printerTags[attrPrinterInfo]; ok && len(i) > 0 {
 		info = i[0]
+        fmt.Println(i)
 	}
 	uuid := getUUID(printerTags)
 
@@ -46,8 +47,10 @@ func translateAttrs(printerTags map[string][]string) (*cdd.PrinterDescriptionSec
 	state.VendorState = getVendorState(printerTags)
 
 	tags := make(map[string]string, len(printerTags))
+    
 	for k, v := range printerTags {
 		tags[k] = strings.Join(v, ",")
+        fmt.Println(v)
 	}
 
 	return &desc, &state, name, info, uuid, tags

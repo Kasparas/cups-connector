@@ -479,20 +479,17 @@ const (
 )
 
 // Share calls google.com/cloudprint/share to share a registered GCP printer.
-func (gcp *GoogleCloudPrint) Share(gcpID, shareScope string, role Role, skip_notification bool, public bool) error {
+func (gcp *GoogleCloudPrint) Share(gcpID, shareScope string, role Role, skip_notification bool) error {
 	if gcp.userClient == nil {
 		return errors.New("Cannot share because user OAuth credentials not provided.")
 	}
 
 	form := url.Values{}
 	form.Set("printerid", gcpID)
-	if public {
-		form.Set("public", "true")
-	} else {
-		form.Set("skip_notification", strconv.FormatBool(skip_notification))
-		form.Set("role", string(role))
-		form.Set("scope", shareScope)
-	}
+	form.Set("scope", shareScope)
+	form.Set("role", string(role))
+	form.Set("skip_notification", strconv.FormatBool(skip_notification))
+
 	if _, _, _, err := postWithRetry(gcp.userClient, gcp.baseURL+"share", form); err != nil {
 		return err
 	}
@@ -501,18 +498,14 @@ func (gcp *GoogleCloudPrint) Share(gcpID, shareScope string, role Role, skip_not
 }
 
 // Unshare calls google.com/cloudprint/unshare to unshare a registered GCP printer.
-func (gcp *GoogleCloudPrint) Unshare(gcpID, shareScope string, public bool) error {
+func (gcp *GoogleCloudPrint) Unshare(gcpID, shareScope string) error {
 	if gcp.userClient == nil {
 		return errors.New("Cannot unshare because user OAuth credentials not provided.")
 	}
 
 	form := url.Values{}
 	form.Set("printerid", gcpID)
-	if public {
-		form.Set("public", "true")
-	} else {
-		form.Set("scope", shareScope)
-	}
+	form.Set("scope", "scope")
 
 	if _, _, _, err := postWithRetry(gcp.userClient, gcp.baseURL+"unshare", form); err != nil {
 		return err
@@ -701,7 +694,7 @@ func (gcp *GoogleCloudPrint) assembleJob(job *Job) (*cdd.CloudJobTicket, string,
 			fmt.Sprintf("Failed to create a temporary file: %s", err),
 			&cdd.PrintJobStateDiff{
 				State: &cdd.JobState{
-					Type:              cdd.JobStateAborted,
+					Type:              cdd.JobStateDone,
 					DeviceActionCause: &cdd.DeviceActionCause{ErrorCode: cdd.DeviceActionCauseOther},
 				},
 			}

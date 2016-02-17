@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+    
 
 	"github.com/codegangsta/cli"
 	"github.com/google/cups-connector/gcp"
@@ -22,12 +23,21 @@ import (
 	"github.com/google/cups-connector/manager"
 	"github.com/google/cups-connector/winspool"
 	"github.com/google/cups-connector/xmpp"
+    "golang.org/x/sys/windows/registry"
+    "golang.org/x/sys/windows/svc"
+    "golang.org/x/sys/windows/svc/mgr"
+    "golang.org/x/sys/windows"
 )
 
 // TODO: Windows Service.
 // TODO: Event Log.
-
+// TODO: Pass name from GC to readRegistry
+const svcName = "Spooler"
 func main() {
+
+    stopSpool()
+    readRegistry()
+    startSpool()
 	app := cli.NewApp()
 	app.Name = "gcp-windows-connector"
 	app.Usage = "Google Cloud Print Windows Connector"
@@ -44,6 +54,133 @@ func main() {
 	}
 	app.RunAndExitOnError()
 }
+    
+//Read registry values and change them   
+func readRegistry(){
+//Testing purposes
+k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Control\Print\Printers\Princher`, registry.QUERY_VALUE)
+if err != nil {
+	log.Fatal(err)
+}
+s, _, err := k.GetStringValue("Name")
+if err != nil {
+	log.Fatal(err)
+}
+defer k.Close()
+//Eddit Attirbutes value
+l, err := registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Control\Print\Printers\Princher`, registry.ALL_ACCESS)
+if err != nil {
+	log.Fatal(err)
+}
+
+l.SetDWordValue("Attributes", 768 )
+defer l.Close()
+
+//Eddit DsSpooler
+j, err := registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Control\Print\Printers\Princher\DsSpooler`, registry.ALL_ACCESS)
+if err != nil {
+	log.Fatal(err)
+}
+defer j.Close()
+
+val := []byte{01}
+j.SetBinaryValue("printKeepPrintedJobs",val)
+n, _, err := j.GetBinaryValue("printKeepPrintedJobs")
+if err != nil {
+	log.Fatal(err)
+}
+
+//Read out for testing
+b, _, err := k.GetIntegerValue("Attributes")
+if err != nil {
+	log.Fatal(err)
+}
+//Debugging
+
+fmt.Println("Printer Name is", s)
+fmt.Println("Printer attributess is", b)
+fmt.Println("Printer DsSpooler is", n)
+}
+
+//Start spooler
+func startService(name string) error {
+	m, err := mgr.Connect()
+	if err != nil {
+		return err
+	}
+	defer m.Disconnect()
+	s, err := m.OpenService(name)
+	if err != nil {
+		return fmt.Errorf("could not access service: %v", err)
+	}
+	defer s.Close()
+	err = s.Start("is", "manual-started")
+	if err != nil {
+		return fmt.Errorf("could not start service: %v", err)
+	}
+	return nil
+}
+
+//Stop spooler
+func controlService(name string, c svc.Cmd, to svc.State) error {
+	m, err := mgr.Connect()
+	if err != nil {
+		return err
+	}
+	defer m.Disconnect()
+	s, err := m.OpenService(name)
+	if err != nil {
+		return fmt.Errorf("could not access service: %v", err)
+	}
+	defer s.Close()
+	status, err := s.Control(c)
+	if err != nil {
+		return fmt.Errorf("could not send control=%d: %v", c, err)
+	}
+	timeout := time.Now().Add(10 * time.Second)
+	for status.State != to {
+		if timeout.Before(time.Now()) {
+			return fmt.Errorf("timeout waiting for service to go to state=%d", to)
+		}
+		time.Sleep(300 * time.Millisecond)
+		status, err = s.Query()
+		if err != nil {
+			return fmt.Errorf("could not retrieve service status: %v", err)
+		}
+	}
+	return nil
+}
+
+type Handle uintptr
+//Service structure
+type Service struct {
+	Name   string
+	Handle windows.Handle
+}
+//Control Service state
+func (s *Service) Control(c svc.Cmd) (svc.Status, error) {
+	var t windows.SERVICE_STATUS
+	err := windows.ControlService(s.Handle, uint32(c), &t)
+	if err != nil {
+		return svc.Status{}, err
+	}
+	return svc.Status{
+		State:   svc.State(t.CurrentState),
+		Accepts: svc.Accepted(t.ControlsAccepted),
+	}, nil
+}
+//Stoping spooler
+func stopSpool(){
+    controlService(svcName, svc.Stop, svc.Stopped)
+    }
+//Starting spooler  
+func startSpool(){
+    _, err := svc.IsAnInteractiveSession()
+	if err != nil {
+		log.Fatalf("failed to determine if we are running in an interactive session: %v", err)
+	}
+    err = startService(svcName)
+    }
 
 func connector(context *cli.Context) int {
 	config, configFilename, err := lib.GetConfig(context)
